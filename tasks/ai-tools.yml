@@ -1,0 +1,58 @@
+---
+# =============================================================================
+# AI TOOLS AND ADDITIONAL APPLICATIONS
+# =============================================================================
+# Installs AI coding assistants and additional applications.
+#
+# Packages:
+#   - claude-code (AUR): Anthropic's Claude CLI
+#   - gemini-cli (AUR): Google Gemini CLI
+#   - vencord (AUR): Discord client mod
+#   - dbeaver: Universal database tool
+# =============================================================================
+
+- name: AI Tools and Applications Setup
+  when: install_ai_tools | default(true)
+  tags:
+    - ai-tools
+    - applications
+  block:
+    # -------------------------------------------------------------------------
+    # OFFICIAL REPO PACKAGES
+    # -------------------------------------------------------------------------
+    - name: Install applications from official repos
+      community.general.pacman:
+        name: "{{ ai_tools_packages }}"
+        state: present
+      become: true
+      when: ai_tools_packages | default([]) | length > 0
+
+    # -------------------------------------------------------------------------
+    # AUR PACKAGES
+    # -------------------------------------------------------------------------
+    - name: Check if AUR helper is available
+      ansible.builtin.command: "which {{ aur_helper | default('paru') }}"
+      register: aur_helper_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install AI tools from AUR
+      kewlfft.aur.aur:
+        name: "{{ item }}"
+        state: present
+        use: "{{ aur_helper | default('paru') }}"
+      become: true
+      become_user: "{{ target_user }}"
+      loop: "{{ ai_tools_aur_packages }}"
+      when:
+        - aur_helper_check.rc == 0
+        - ai_tools_aur_packages | default([]) | length > 0
+      register: aur_install_result
+      # Some AUR packages might fail if not available, continue with others
+      failed_when: false
+
+    - name: Report AUR installation status
+      ansible.builtin.debug:
+        msg: "Package {{ item.item }} - {{ 'installed' if item.changed else ('skipped/failed' if item.failed | default(false) else 'already present') }}"
+      loop: "{{ aur_install_result.results | default([]) }}"
+      when: aur_install_result.results is defined

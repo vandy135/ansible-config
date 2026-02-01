@@ -1,0 +1,124 @@
+---
+# =============================================================================
+# ZSH SHELL CONFIGURATION
+# =============================================================================
+# Installs zsh, sets it as default shell, and configures autocompletion.
+#
+# Packages installed:
+#   - zsh: The Z shell
+#   - zsh-autosuggestions: Fish-like autosuggestions
+#   - zsh-completions: Additional completion definitions
+#   - zsh-syntax-highlighting: Syntax highlighting for commands
+#   - fzf-tab (AUR): FZF-powered tab completion
+#
+# Reference: https://wiki.archlinux.org/title/Zsh
+# =============================================================================
+
+- name: Zsh Shell Setup
+  when: install_zsh | default(true)
+  tags:
+    - zsh
+    - shell
+  block:
+    # -------------------------------------------------------------------------
+    # INSTALL ZSH AND PLUGINS
+    # -------------------------------------------------------------------------
+    - name: Install zsh and plugins from official repos
+      community.general.pacman:
+        name: "{{ zsh_packages }}"
+        state: present
+      become: true
+
+    - name: Check if AUR helper is available for fzf-tab
+      ansible.builtin.command: "which {{ aur_helper | default('paru') }}"
+      register: aur_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install zsh plugins from AUR
+      kewlfft.aur.aur:
+        name: "{{ item }}"
+        state: present
+        use: "{{ aur_helper | default('paru') }}"
+      become: true
+      become_user: "{{ target_user }}"
+      loop: "{{ zsh_aur_packages }}"
+      when: aur_check.rc == 0
+
+    # -------------------------------------------------------------------------
+    # SET ZSH AS DEFAULT SHELL
+    # -------------------------------------------------------------------------
+    - name: Get zsh path
+      ansible.builtin.command: which zsh
+      register: zsh_path
+      changed_when: false
+
+    - name: Ensure zsh is in /etc/shells
+      ansible.builtin.lineinfile:
+        path: /etc/shells
+        line: "{{ zsh_path.stdout }}"
+        state: present
+      become: true
+
+    - name: Set zsh as default shell for target user
+      ansible.builtin.user:
+        name: "{{ target_user }}"
+        shell: "{{ zsh_path.stdout }}"
+      become: true
+
+    # -------------------------------------------------------------------------
+    # CREATE ZSH CONFIGURATION
+    # -------------------------------------------------------------------------
+    - name: Create zsh config directory
+      ansible.builtin.file:
+        path: "{{ target_user_home }}/.config/zsh"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      become: true
+
+    - name: Deploy .zshrc configuration
+      ansible.builtin.template:
+        src: zshrc.j2
+        dest: "{{ target_user_home }}/.zshrc"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0644'
+        backup: true
+      become: true
+
+    - name: Deploy .zshenv for XDG compliance
+      ansible.builtin.copy:
+        content: |
+          # ZSH Environment Variables
+          # This file is sourced on all shell invocations
+
+          # XDG Base Directory Specification
+          export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+          export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+          export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+          export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+
+          # Zsh config location
+          export ZDOTDIR="${XDG_CONFIG_HOME}/zsh"
+
+          # History file location
+          export HISTFILE="${XDG_STATE_HOME}/zsh/history"
+
+          # Ensure history directory exists
+          [[ -d "${XDG_STATE_HOME}/zsh" ]] || mkdir -p "${XDG_STATE_HOME}/zsh"
+        dest: "{{ target_user_home }}/.zshenv"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0644'
+      become: true
+
+    - name: Create zsh state directory for history
+      ansible.builtin.file:
+        path: "{{ target_user_home }}/.local/state/zsh"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      become: true

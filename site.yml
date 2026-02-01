@@ -1,0 +1,200 @@
+---
+# =============================================================================
+# ARCH LINUX CONFIGURATION PLAYBOOK
+# =============================================================================
+# Main entry point for system configuration.
+#
+# Usage:
+#   ansible-playbook site.yml -l laptop          # Configure laptop
+#   ansible-playbook site.yml -l desktop         # Configure desktop
+#   ansible-playbook site.yml -l localhost       # Configure local machine
+#   ansible-playbook site.yml --check --diff     # Dry run with diff
+#   ansible-playbook site.yml --tags base        # Run only base tasks
+#
+# Reference: https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_intro.html
+# =============================================================================
+
+- name: Arch Linux System Configuration
+  hosts: all
+  gather_facts: true
+
+  # Load handlers for all tasks
+  handlers_files:
+    - handlers/main.yml
+
+  # Pre-tasks run before roles and tasks
+  pre_tasks:
+    - name: Display playbook information
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║         ARCH LINUX CONFIGURATION PLAYBOOK                   ║
+          ╠══════════════════════════════════════════════════════════════╣
+          ║  Target Host: {{ inventory_hostname | default('unknown') }}
+          ║  Target User: {{ target_user | default('unknown') }}
+          ║  Hostname:    {{ system_hostname | default('archlinux') }}
+          ╚══════════════════════════════════════════════════════════════╝
+      tags:
+        - always
+
+    - name: Verify Ansible version
+      ansible.builtin.assert:
+        that:
+          - ansible_version.full is version('2.14', '>=')
+        fail_msg: "This playbook requires Ansible 2.14 or higher. Found: {{ ansible_version.full }}"
+        success_msg: "Ansible version {{ ansible_version.full }} is supported"
+      tags:
+        - always
+        - preflight
+
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: pacman
+      tags:
+        - always
+
+  # Roles to apply
+  roles:
+    - role: base
+      tags:
+        - base
+        - system
+
+  # Tasks to run after roles
+  tasks:
+    # -------------------------------------------------------------------------
+    # AUR HELPER
+    # -------------------------------------------------------------------------
+    - name: Install AUR helper
+      ansible.builtin.include_tasks: tasks/aur-helper.yml
+      when: install_aur_helper | default(true)
+      tags:
+        - aur
+        - aur-helper
+
+    # -------------------------------------------------------------------------
+    # USER MANAGEMENT
+    # -------------------------------------------------------------------------
+    - name: Configure users
+      ansible.builtin.include_tasks: tasks/users.yml
+      tags:
+        - users
+
+    # -------------------------------------------------------------------------
+    # SYSTEM SERVICES
+    # -------------------------------------------------------------------------
+    - name: Configure system services
+      ansible.builtin.include_tasks: tasks/services.yml
+      tags:
+        - services
+
+    # -------------------------------------------------------------------------
+    # SECURITY
+    # -------------------------------------------------------------------------
+    - name: Configure security
+      ansible.builtin.include_tasks: tasks/security.yml
+      when: configure_firewall | default(true) or configure_fail2ban | default(false)
+      tags:
+        - security
+
+    # -------------------------------------------------------------------------
+    # FONTS
+    # -------------------------------------------------------------------------
+    - name: Install fonts
+      ansible.builtin.include_tasks: tasks/fonts.yml
+      when: install_fonts | default(true)
+      tags:
+        - fonts
+
+    # -------------------------------------------------------------------------
+    # DESKTOP ENVIRONMENT
+    # -------------------------------------------------------------------------
+    - name: Configure desktop environment
+      ansible.builtin.include_tasks: tasks/desktop.yml
+      when: install_desktop | default(true)
+      tags:
+        - desktop
+
+    # -------------------------------------------------------------------------
+    # DEVELOPMENT TOOLS
+    # -------------------------------------------------------------------------
+    - name: Install development tools
+      ansible.builtin.include_tasks: tasks/development.yml
+      when: install_dev_tools | default(true)
+      tags:
+        - dev-tools
+        - development
+
+    # -------------------------------------------------------------------------
+    # ZSH SHELL
+    # -------------------------------------------------------------------------
+    - name: Configure zsh shell
+      ansible.builtin.include_tasks: tasks/zsh.yml
+      when: install_zsh | default(true)
+      tags:
+        - zsh
+        - shell
+
+    # -------------------------------------------------------------------------
+    # CLI TOOLS
+    # -------------------------------------------------------------------------
+    - name: Install CLI tools
+      ansible.builtin.include_tasks: tasks/cli-tools.yml
+      when: install_cli_tools | default(true)
+      tags:
+        - cli-tools
+
+    # -------------------------------------------------------------------------
+    # BROWSER
+    # -------------------------------------------------------------------------
+    - name: Install browser
+      ansible.builtin.include_tasks: tasks/browser.yml
+      when: install_browser | default(true)
+      tags:
+        - browser
+
+    # -------------------------------------------------------------------------
+    # AI TOOLS
+    # -------------------------------------------------------------------------
+    - name: Install AI tools and applications
+      ansible.builtin.include_tasks: tasks/ai-tools.yml
+      when: install_ai_tools | default(true)
+      tags:
+        - ai-tools
+        - applications
+
+    # -------------------------------------------------------------------------
+    # EXTRA PACKAGES
+    # -------------------------------------------------------------------------
+    - name: Install extra packages
+      ansible.builtin.include_tasks: tasks/extra-packages.yml
+      when: install_extra_packages | default(true)
+      tags:
+        - extra-packages
+
+    # -------------------------------------------------------------------------
+    # DOTFILES
+    # -------------------------------------------------------------------------
+    - name: Manage dotfiles
+      ansible.builtin.include_tasks: tasks/dotfiles.yml
+      when: manage_dotfiles | default(true)
+      tags:
+        - dotfiles
+
+  # Post-tasks run after all tasks
+  post_tasks:
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: |
+          ╔══════════════════════════════════════════════════════════════╗
+          ║         CONFIGURATION COMPLETE                              ║
+          ╠══════════════════════════════════════════════════════════════╣
+          ║  System has been configured successfully!                   ║
+          ║                                                             ║
+          ║  Next steps:                                                ║
+          ║  1. Log out and log back in for group changes              ║
+          ║  2. Reboot to ensure all services start correctly          ║
+          ║  3. Run 'gh auth login' to authenticate GitHub CLI         ║
+          ╚══════════════════════════════════════════════════════════════╝
+      tags:
+        - always

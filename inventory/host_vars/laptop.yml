@@ -1,0 +1,131 @@
+---
+# =============================================================================
+# LAPTOP HOST CONFIGURATION
+# =============================================================================
+# Host-specific configuration for laptop systems.
+# These values override the defaults in group_vars/all.yml
+#
+# Reference: https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#organizing-host-and-group-variables
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# SYSTEM CONFIGURATION - Laptop Specific
+# -----------------------------------------------------------------------------
+
+system_hostname: arch-laptop
+target_user: titan
+
+# Laptop-specific timezone (adjust as needed)
+system_timezone: America/Chicago
+
+# -----------------------------------------------------------------------------
+# FEATURE FLAGS - Laptop Overrides
+# -----------------------------------------------------------------------------
+# Laptops typically need all features enabled for portability
+
+# All desktop features enabled for daily driver laptop
+install_desktop: true
+install_niri: true
+install_waybar: true
+install_terminal: true
+install_launcher: true
+install_notifications: true
+install_screen_locker: true
+install_wallpaper: true
+install_display_manager: true
+
+# Development tools - full setup for development laptop
+install_dev_tools: true
+install_docker: true
+install_neovim: true
+install_lazygit: true
+
+# Bluetooth essential for laptop (headphones, mouse, etc.)
+install_bluetooth: true
+
+# Audio essential
+install_audio: true
+
+# Printing might be needed at home/office
+install_printing: true
+
+# Security features
+configure_firewall: true
+
+# Browser and keyring for daily use
+install_browser: true
+install_keyring: true
+
+# Dotfiles
+manage_dotfiles: true
+
+# -----------------------------------------------------------------------------
+# LAPTOP-SPECIFIC PACKAGES
+# -----------------------------------------------------------------------------
+
+# Power management packages for laptops
+extra_packages:
+  - power-profiles-daemon       # Power management
+  - brightnessctl               # Backlight control
+  - acpi                        # Battery status
+  - tlp                         # Advanced power management
+  - thermald                    # Thermal management
+
+extra_aur_packages:
+  - auto-cpufreq                # Automatic CPU frequency scaling
+
+# Laptop-specific services
+services_to_enable:
+  - NetworkManager
+  - bluetooth
+  - docker
+  - sddm
+  - power-profiles-daemon
+  - tlp
+  - cups                        # Printing
+
+# Waybar modules specific to laptop (show battery)
+waybar_modules_left:
+  - workspaces
+  - window
+
+waybar_modules_center:
+  - clock
+
+waybar_modules_right:
+  - pulseaudio
+  - network
+  - bluetooth
+  - backlight
+  - battery
+  - tray
+
+# -----------------------------------------------------------------------------
+# LAPTOP-SPECIFIC CONFIGURATION
+# -----------------------------------------------------------------------------
+
+# Enable touchpad configuration in niri
+niri_touchpad_enabled: true
+niri_touchpad_tap_to_click: true
+niri_touchpad_natural_scroll: true
+
+# Screen locker timeout (shorter for laptop security)
+swayidle_timeout_lock: 300      # 5 minutes
+swayidle_timeout_screen_off: 600  # 10 minutes
+
+# Power management thresholds
+laptop_battery_low_threshold: 20
+laptop_battery_critical_threshold: 10
+
+# -----------------------------------------------------------------------------
+# DOTFILES CONFIGURATION
+# -----------------------------------------------------------------------------
+
+# Example dotfiles repo (uncomment and modify)
+# dotfiles_repo: "https://github.com/yourusername/dotfiles.git"
+# dotfiles_destination: "{{ target_user_home }}/.dotfiles"
+
+# Managed dotfiles specific to laptop
+managed_dotfiles:
+  - src: alacritty.yml.j2
+    dest: "{{ target_user_home }}/.config/alacritty/alacritty.yml"

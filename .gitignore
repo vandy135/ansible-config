@@ -1,0 +1,46 @@
+prompt.md
+project-
+# Ansible specific
+*.retry
+*.pyc
+__pycache__/
+
+# Vault files (encrypted secrets - keep these, ignore plaintext)
+**/vault_plaintext.yml
+**/secrets_plaintext.yml
+
+# Local inventory overrides
+inventory/local.yml
+inventory/local/
+
+# SSH keys and credentials
+*.pem
+*.key
+id_rsa*
+*.crt
+
+# Editor and IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing artifacts
+.molecule/
+.cache/
+.pytest_cache/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Custom local configuration (user should create their own)
+inventory/host_vars/local*.yml

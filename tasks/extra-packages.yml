@@ -1,0 +1,49 @@
+---
+# =============================================================================
+# EXTRA PACKAGES TASKS
+# =============================================================================
+# Installs additional packages defined in host_vars.
+# This allows host-specific package customization.
+# =============================================================================
+
+- name: Extra Packages Installation
+  when: install_extra_packages | default(true)
+  tags:
+    - extra-packages
+  block:
+    # -------------------------------------------------------------------------
+    # OFFICIAL REPOSITORY PACKAGES
+    # -------------------------------------------------------------------------
+    - name: Install extra packages from official repos
+      community.general.pacman:
+        name: "{{ extra_packages }}"
+        state: present
+      become: true
+      when:
+        - extra_packages is defined
+        - extra_packages | length > 0
+
+    # -------------------------------------------------------------------------
+    # AUR PACKAGES
+    # -------------------------------------------------------------------------
+    - name: Check if AUR helper is available
+      ansible.builtin.command: "which {{ aur_helper | default('paru') }}"
+      register: aur_helper_check
+      changed_when: false
+      failed_when: false
+      when:
+        - extra_aur_packages is defined
+        - extra_aur_packages | length > 0
+
+    - name: Install extra packages from AUR
+      kewlfft.aur.aur:
+        name: "{{ item }}"
+        state: present
+        use: "{{ aur_helper | default('paru') }}"
+      become: true
+      become_user: "{{ target_user }}"
+      loop: "{{ extra_aur_packages | default([]) }}"
+      when:
+        - extra_aur_packages is defined
+        - extra_aur_packages | length > 0
+        - aur_helper_check.rc == 0

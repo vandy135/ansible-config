@@ -1,0 +1,236 @@
+---
+# =============================================================================
+# DESKTOP ENVIRONMENT TASKS
+# =============================================================================
+# Installs and configures Wayland desktop environment components.
+# Includes: niri, waybar, alacritty, fuzzel, mako, swaybg, swayidle, swaylock, sddm
+#
+# Reference: https://github.com/YaLTeR/niri
+# Reference: https://wiki.archlinux.org/title/Wayland
+# =============================================================================
+
+- name: Desktop Environment Setup
+  when: install_desktop | default(true)
+  tags:
+    - desktop
+  block:
+    # -------------------------------------------------------------------------
+    # WAYLAND BASE
+    # -------------------------------------------------------------------------
+    - name: Install Wayland base packages
+      community.general.pacman:
+        name: "{{ wayland_packages }}"
+        state: present
+      become: true
+      tags:
+        - wayland
+
+    # -------------------------------------------------------------------------
+    # NIRI COMPOSITOR
+    # -------------------------------------------------------------------------
+    - name: Install niri Wayland compositor
+      community.general.pacman:
+        name: "{{ niri_packages }}"
+        state: present
+      become: true
+      when: install_niri | default(true)
+      tags:
+        - niri
+
+    - name: Create niri config directory
+      ansible.builtin.file:
+        path: "{{ target_user_home }}/.config/niri"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      become: true
+      when: install_niri | default(true)
+      tags:
+        - niri
+
+    # -------------------------------------------------------------------------
+    # WAYBAR STATUS BAR
+    # -------------------------------------------------------------------------
+    - name: Install waybar
+      community.general.pacman:
+        name: "{{ waybar_packages }}"
+        state: present
+      become: true
+      when: install_waybar | default(true)
+      tags:
+        - waybar
+
+    - name: Create waybar config directory
+      ansible.builtin.file:
+        path: "{{ target_user_home }}/.config/waybar"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      become: true
+      when: install_waybar | default(true)
+      tags:
+        - waybar
+
+    # -------------------------------------------------------------------------
+    # TERMINAL EMULATOR (ALACRITTY)
+    # -------------------------------------------------------------------------
+    - name: Install terminal emulator (alacritty)
+      community.general.pacman:
+        name: "{{ terminal_packages }}"
+        state: present
+      become: true
+      when: install_terminal | default(true)
+      tags:
+        - terminal
+        - alacritty
+
+    - name: Create alacritty config directory
+      ansible.builtin.file:
+        path: "{{ target_user_home }}/.config/alacritty"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      become: true
+      when: install_terminal | default(true)
+      tags:
+        - terminal
+        - alacritty
+
+    # -------------------------------------------------------------------------
+    # APPLICATION LAUNCHER (FUZZEL)
+    # -------------------------------------------------------------------------
+    - name: Install application launcher (fuzzel)
+      community.general.pacman:
+        name: "{{ launcher_packages }}"
+        state: present
+      become: true
+      when: install_launcher | default(true)
+      tags:
+        - launcher
+        - fuzzel
+
+    # -------------------------------------------------------------------------
+    # NOTIFICATION DAEMON (MAKO)
+    # -------------------------------------------------------------------------
+    - name: Install notification daemon (mako)
+      community.general.pacman:
+        name: "{{ notification_packages }}"
+        state: present
+      become: true
+      when: install_notifications | default(true)
+      tags:
+        - notifications
+        - mako
+
+    - name: Create mako config directory
+      ansible.builtin.file:
+        path: "{{ target_user_home }}/.config/mako"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      become: true
+      when: install_notifications | default(true)
+      tags:
+        - notifications
+        - mako
+
+    # -------------------------------------------------------------------------
+    # SCREEN LOCKER (SWAYLOCK + SWAYIDLE)
+    # -------------------------------------------------------------------------
+    - name: Install screen locker (swaylock + swayidle)
+      community.general.pacman:
+        name: "{{ screen_locker_packages }}"
+        state: present
+      become: true
+      when: install_screen_locker | default(true)
+      tags:
+        - screen-locker
+        - swaylock
+
+    # -------------------------------------------------------------------------
+    # WALLPAPER (SWAYBG)
+    # -------------------------------------------------------------------------
+    - name: Install wallpaper manager (swaybg)
+      community.general.pacman:
+        name: "{{ wallpaper_packages }}"
+        state: present
+      become: true
+      when: install_wallpaper | default(true)
+      tags:
+        - wallpaper
+        - swaybg
+
+    # -------------------------------------------------------------------------
+    # DISPLAY MANAGER (SDDM)
+    # -------------------------------------------------------------------------
+    - name: Install display manager (sddm)
+      community.general.pacman:
+        name: "{{ display_manager_packages }}"
+        state: present
+      become: true
+      when: install_display_manager | default(true)
+      notify: Enable sddm service
+      tags:
+        - display-manager
+        - sddm
+
+    # -------------------------------------------------------------------------
+    # XDG DESKTOP PORTAL
+    # -------------------------------------------------------------------------
+    - name: Install XDG desktop portal
+      community.general.pacman:
+        name: "{{ xdg_portal_packages }}"
+        state: present
+      become: true
+      when: install_xdg_portal | default(true)
+      tags:
+        - xdg-portal
+
+    # -------------------------------------------------------------------------
+    # GNOME KEYRING
+    # -------------------------------------------------------------------------
+    - name: Install gnome-keyring
+      community.general.pacman:
+        name: "{{ keyring_packages }}"
+        state: present
+      become: true
+      when: install_keyring | default(true)
+      tags:
+        - keyring
+
+    - name: Configure PAM for gnome-keyring auto-unlock
+      ansible.builtin.blockinfile:
+        path: /etc/pam.d/login
+        block: |
+          auth       optional     pam_gnome_keyring.so
+          session    optional     pam_gnome_keyring.so auto_start
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - gnome-keyring"
+        backup: true
+      become: true
+      when: install_keyring | default(true)
+      tags:
+        - keyring
+        - pam
+
+    - name: Configure PAM for gnome-keyring with SDDM
+      ansible.builtin.blockinfile:
+        path: /etc/pam.d/sddm
+        block: |
+          auth       optional     pam_gnome_keyring.so
+          session    optional     pam_gnome_keyring.so auto_start
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - gnome-keyring"
+        backup: true
+        create: true
+        mode: '0644'
+      become: true
+      when:
+        - install_keyring | default(true)
+        - install_display_manager | default(true)
+      tags:
+        - keyring
+        - pam
+        - sddm

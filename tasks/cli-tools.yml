@@ -1,0 +1,196 @@
+---
+# =============================================================================
+# CLI UTILITIES TASKS
+# =============================================================================
+# Installs modern CLI tools and utilities.
+# Includes: eza, fd, ripgrep, fzf, jq, tldr, httpie, curl, wl-clipboard
+#
+# Reference: https://github.com/ibraheemdev/modern-unix
+# =============================================================================
+
+- name: CLI Tools Setup
+  when: install_cli_tools | default(true)
+  tags:
+    - cli-tools
+  block:
+    # -------------------------------------------------------------------------
+    # MODERN UNIX REPLACEMENTS
+    # -------------------------------------------------------------------------
+    - name: Install modern unix tools
+      community.general.pacman:
+        name: "{{ modern_unix_packages }}"
+        state: present
+      become: true
+      when: install_modern_unix | default(true)
+      tags:
+        - modern-unix
+
+    # -------------------------------------------------------------------------
+    # SHELL UTILITIES
+    # -------------------------------------------------------------------------
+    - name: Install shell utilities
+      community.general.pacman:
+        name: "{{ shell_utils_packages }}"
+        state: present
+      become: true
+      when: install_shell_utils | default(true)
+      tags:
+        - shell-utils
+
+    - name: Initialize zoxide for user
+      ansible.builtin.shell: |
+        if command -v zoxide &> /dev/null; then
+          zoxide init bash > /dev/null 2>&1
+        fi
+      become: true
+      become_user: "{{ target_user }}"
+      changed_when: false
+      failed_when: false
+      when: install_shell_utils | default(true)
+      tags:
+        - shell-utils
+        - zoxide
+
+    # -------------------------------------------------------------------------
+    # HTTP TOOLS
+    # -------------------------------------------------------------------------
+    - name: Install HTTP tools
+      community.general.pacman:
+        name: "{{ http_tools_packages }}"
+        state: present
+      become: true
+      when: install_http_tools | default(true)
+      tags:
+        - http-tools
+
+    # -------------------------------------------------------------------------
+    # CLIPBOARD TOOLS
+    # -------------------------------------------------------------------------
+    - name: Install clipboard tools
+      community.general.pacman:
+        name: "{{ clipboard_packages }}"
+        state: present
+      become: true
+      when: install_clipboard | default(true)
+      tags:
+        - clipboard
+
+    # -------------------------------------------------------------------------
+    # SHELL ALIASES CONFIGURATION
+    # -------------------------------------------------------------------------
+    - name: Create shell aliases file
+      ansible.builtin.copy:
+        content: |
+          # Modern Unix Aliases
+          # Managed by Ansible - add your custom aliases below the marker
+
+          # eza aliases (ls replacement)
+          if command -v eza &> /dev/null; then
+            alias ls='eza --icons'
+            alias ll='eza -la --icons'
+            alias la='eza -a --icons'
+            alias lt='eza --tree --icons'
+            alias l='eza -l --icons'
+          fi
+
+          # bat aliases (cat replacement)
+          if command -v bat &> /dev/null; then
+            alias cat='bat --paging=never'
+            alias catp='bat'
+          fi
+
+          # fd alias
+          if command -v fd &> /dev/null; then
+            alias find='fd'
+          fi
+
+          # ripgrep alias
+          if command -v rg &> /dev/null; then
+            alias grep='rg'
+          fi
+
+          # dust alias (du replacement)
+          if command -v dust &> /dev/null; then
+            alias du='dust'
+          fi
+
+          # duf alias (df replacement)
+          if command -v duf &> /dev/null; then
+            alias df='duf'
+          fi
+
+          # procs alias (ps replacement)
+          if command -v procs &> /dev/null; then
+            alias ps='procs'
+          fi
+
+          # Zoxide (cd replacement)
+          if command -v zoxide &> /dev/null; then
+            eval "$(zoxide init bash)"
+          fi
+
+          # FZF configuration
+          if command -v fzf &> /dev/null; then
+            export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
+            if command -v fd &> /dev/null; then
+              export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+              export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+            fi
+          fi
+
+          # Atuin (shell history)
+          if command -v atuin &> /dev/null; then
+            eval "$(atuin init bash)"
+          fi
+
+          # === ADD CUSTOM ALIASES BELOW ===
+        dest: "{{ target_user_home }}/.config/shell/aliases.sh"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0644'
+      become: true
+      when: install_modern_unix | default(true)
+      tags:
+        - aliases
+        - shell-config
+
+    - name: Ensure shell config directory exists
+      ansible.builtin.file:
+        path: "{{ target_user_home }}/.config/shell"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      become: true
+      tags:
+        - shell-config
+
+    - name: Add aliases source to bashrc
+      ansible.builtin.lineinfile:
+        path: "{{ target_user_home }}/.bashrc"
+        line: '[ -f "$HOME/.config/shell/aliases.sh" ] && source "$HOME/.config/shell/aliases.sh"'
+        create: true
+        mode: '0644'
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+      become: true
+      when: install_modern_unix | default(true)
+      tags:
+        - aliases
+        - shell-config
+
+    - name: Add aliases source to zshrc if zsh is used
+      ansible.builtin.lineinfile:
+        path: "{{ target_user_home }}/.zshrc"
+        line: '[ -f "$HOME/.config/shell/aliases.sh" ] && source "$HOME/.config/shell/aliases.sh"'
+        create: true
+        mode: '0644'
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+      become: true
+      when:
+        - install_modern_unix | default(true)
+        - "'/zsh' in target_user_shell"
+      tags:
+        - aliases
+        - shell-config

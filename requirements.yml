@@ -1,0 +1,19 @@
+---
+# Ansible Galaxy requirements
+# Install with: ansible-galaxy install -r requirements.yml
+#
+# Reference: https://docs.ansible.com/ansible/latest/galaxy/user_guide.html#installing-roles-and-collections-from-the-same-requirements-yml-file
+
+collections:
+  # Community general collection - provides additional modules
+  # Docs: https://docs.ansible.com/ansible/latest/collections/community/general/index.html
+  - name: community.general
+    version: ">=8.0.0"
+
+  # Kewlfft AUR module for Arch Linux AUR package management
+  # Docs: https://github.com/kewlfft/ansible-aur
+  - name: kewlfft.aur
+    version: ">=0.9"
+
+# Note: The kewlfft.aur collection provides the 'aur' module for installing
+# AUR packages. It requires an AUR helper (yay, paru, etc.) to be installed first.

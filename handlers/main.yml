@@ -1,0 +1,121 @@
+---
+# =============================================================================
+# MAIN HANDLERS FILE
+# =============================================================================
+# Handlers for tasks outside of roles. These are triggered by notify.
+# Reference: https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_handlers.html
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# DISPLAY MANAGER HANDLERS
+# -----------------------------------------------------------------------------
+- name: Enable sddm service
+  ansible.builtin.systemd:
+    name: sddm
+    enabled: true
+    state: started
+  become: true
+  listen: Enable sddm service
+
+# -----------------------------------------------------------------------------
+# AUDIO HANDLERS
+# -----------------------------------------------------------------------------
+- name: Enable pipewire user service
+  ansible.builtin.systemd:
+    name: pipewire
+    enabled: true
+    scope: user
+    state: started
+  become: true
+  become_user: "{{ target_user }}"
+  listen: Enable pipewire
+
+- name: Enable pipewire-pulse user service
+  ansible.builtin.systemd:
+    name: pipewire-pulse
+    enabled: true
+    scope: user
+    state: started
+  become: true
+  become_user: "{{ target_user }}"
+  listen: Enable pipewire-pulse
+
+- name: Enable wireplumber user service
+  ansible.builtin.systemd:
+    name: wireplumber
+    enabled: true
+    scope: user
+    state: started
+  become: true
+  become_user: "{{ target_user }}"
+  listen: Enable wireplumber
+
+# -----------------------------------------------------------------------------
+# BLUETOOTH HANDLERS
+# -----------------------------------------------------------------------------
+- name: Enable bluetooth service
+  ansible.builtin.systemd:
+    name: bluetooth
+    enabled: true
+    state: started
+  become: true
+  listen: Enable bluetooth
+
+# -----------------------------------------------------------------------------
+# NETWORKING HANDLERS
+# -----------------------------------------------------------------------------
+- name: Enable NetworkManager service
+  ansible.builtin.systemd:
+    name: NetworkManager
+    enabled: true
+    state: started
+  become: true
+  listen: Enable NetworkManager
+
+# -----------------------------------------------------------------------------
+# DOCKER HANDLERS
+# -----------------------------------------------------------------------------
+- name: Enable docker service
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+  become: true
+  listen: Enable docker
+
+# -----------------------------------------------------------------------------
+# FIREWALL HANDLERS
+# -----------------------------------------------------------------------------
+- name: Enable ufw service
+  ansible.builtin.systemd:
+    name: ufw
+    enabled: true
+    state: started
+  become: true
+  listen: Enable ufw
+
+- name: Reload ufw rules
+  ansible.builtin.command: ufw reload
+  become: true
+  listen: Reload ufw
+
+# -----------------------------------------------------------------------------
+# PRINTING HANDLERS
+# -----------------------------------------------------------------------------
+- name: Enable cups service
+  ansible.builtin.systemd:
+    name: cups
+    enabled: true
+    state: started
+  become: true
+  listen: Enable cups
+
+# -----------------------------------------------------------------------------
+# SSH HANDLERS
+# -----------------------------------------------------------------------------
+- name: Restart sshd
+  ansible.builtin.systemd:
+    name: sshd
+    state: restarted
+  become: true
+  listen: Restart sshd

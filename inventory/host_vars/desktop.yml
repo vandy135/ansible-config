@@ -1,0 +1,154 @@
+---
+# =============================================================================
+# DESKTOP HOST CONFIGURATION
+# =============================================================================
+# Host-specific configuration for desktop/workstation systems.
+# These values override the defaults in group_vars/all.yml
+#
+# Reference: https://docs.ansible.com/ansible/latest/inventory_guide/intro_inventory.html#organizing-host-and-group-variables
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# SYSTEM CONFIGURATION - Desktop Specific
+# -----------------------------------------------------------------------------
+
+system_hostname: arch-desktop
+target_user: titan
+
+# Desktop timezone
+system_timezone: America/Chicago
+
+# -----------------------------------------------------------------------------
+# FEATURE FLAGS - Desktop Overrides
+# -----------------------------------------------------------------------------
+# Desktops may have different needs - more powerful, stationary
+
+# Full desktop environment
+install_desktop: true
+install_niri: true
+install_waybar: true
+install_terminal: true
+install_launcher: true
+install_notifications: true
+install_screen_locker: true
+install_wallpaper: true
+install_display_manager: true
+
+# Full development setup for workstation
+install_dev_tools: true
+install_docker: true
+install_neovim: true
+install_lazygit: true
+install_github_cli: true
+install_tmux: true
+
+# Bluetooth - may or may not be needed
+install_bluetooth: true
+
+# Audio for desktop speakers/headset
+install_audio: true
+
+# Desktop probably doesn't need printing as often
+install_printing: false
+
+# Security
+configure_firewall: true
+
+# Browser and keyring
+install_browser: true
+install_keyring: true
+
+# Dotfiles
+manage_dotfiles: true
+
+# -----------------------------------------------------------------------------
+# DESKTOP-SPECIFIC PACKAGES
+# -----------------------------------------------------------------------------
+
+# Desktop-specific extra packages
+extra_packages:
+  - nvidia                      # NVIDIA drivers (if applicable)
+  - nvidia-utils
+  - nvidia-settings
+  - lib32-nvidia-utils          # 32-bit support for Steam, etc.
+  - steam                       # Gaming
+  - discord                     # Communication
+  - obs-studio                  # Screen recording
+  - vlc                         # Media player
+  - gimp                        # Image editing
+  - kdenlive                    # Video editing
+
+extra_aur_packages:
+  - spotify                     # Music streaming
+  - visual-studio-code-bin      # VS Code (if needed alongside neovim)
+
+# Desktop-specific services (no power management needed)
+services_to_enable:
+  - NetworkManager
+  - bluetooth
+  - docker
+  - sddm
+
+# Waybar modules specific to desktop (no battery)
+waybar_modules_left:
+  - workspaces
+  - window
+
+waybar_modules_center:
+  - clock
+
+waybar_modules_right:
+  - pulseaudio
+  - network
+  - cpu
+  - memory
+  - temperature
+  - tray
+
+# -----------------------------------------------------------------------------
+# DESKTOP-SPECIFIC CONFIGURATION
+# -----------------------------------------------------------------------------
+
+# No touchpad on desktop
+niri_touchpad_enabled: false
+
+# Screen locker timeout (can be longer for desktop at home)
+swayidle_timeout_lock: 900       # 15 minutes
+swayidle_timeout_screen_off: 1800  # 30 minutes
+
+# Multi-monitor configuration (example - adjust to your setup)
+# These would be used by niri configuration template
+monitor_config:
+  - name: DP-1
+    resolution: 2560x1440
+    refresh: 144
+    position: "0,0"
+    primary: true
+  - name: HDMI-A-1
+    resolution: 1920x1080
+    refresh: 60
+    position: "2560,0"
+    primary: false
+
+# -----------------------------------------------------------------------------
+# DOTFILES CONFIGURATION
+# -----------------------------------------------------------------------------
+
+# Example dotfiles repo (uncomment and modify)
+# dotfiles_repo: "https://github.com/yourusername/dotfiles.git"
+# dotfiles_destination: "{{ target_user_home }}/.dotfiles"
+
+# Managed dotfiles specific to desktop
+managed_dotfiles:
+  - src: alacritty.yml.j2
+    dest: "{{ target_user_home }}/.config/alacritty/alacritty.yml"
+
+# -----------------------------------------------------------------------------
+# NVIDIA SPECIFIC (if using NVIDIA GPU)
+# -----------------------------------------------------------------------------
+
+# Enable NVIDIA-specific environment variables for Wayland
+nvidia_wayland_env:
+  GBM_BACKEND: nvidia-drm
+  __GLX_VENDOR_LIBRARY_NAME: nvidia
+  WLR_NO_HARDWARE_CURSORS: "1"

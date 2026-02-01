@@ -1,0 +1,87 @@
+---
+# =============================================================================
+# AUR HELPER INSTALLATION
+# =============================================================================
+# Installs an AUR helper (yay or paru) for managing AUR packages.
+# This task must run as a non-root user since makepkg cannot run as root.
+#
+# Reference: https://wiki.archlinux.org/title/AUR_helpers
+# Reference: https://github.com/kewlfft/ansible-aur (for later AUR installs)
+# =============================================================================
+
+- name: AUR Helper Installation
+  tags:
+    - aur
+    - aur-helper
+  block:
+    - name: Check if AUR helper is already installed
+      ansible.builtin.command: "which {{ aur_helper | default('paru') }}"
+      register: aur_helper_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install AUR helper
+      when: aur_helper_check.rc != 0
+      block:
+        - name: Ensure git is installed
+          community.general.pacman:
+            name: git
+            state: present
+          become: true
+
+        - name: Create temporary build directory
+          ansible.builtin.tempfile:
+            state: directory
+            prefix: aur_helper_
+          register: aur_build_dir
+
+        - name: Clone AUR helper repository
+          ansible.builtin.git:
+            repo: "https://aur.archlinux.org/{{ aur_helper_package | default('paru-bin') }}.git"
+            dest: "{{ aur_build_dir.path }}/{{ aur_helper_package | default('paru-bin') }}"
+            version: master
+            depth: 1
+          become: true
+          become_user: "{{ target_user }}"
+
+        - name: Build and install AUR helper
+          ansible.builtin.command:
+            chdir: "{{ aur_build_dir.path }}/{{ aur_helper_package | default('paru-bin') }}"
+            cmd: makepkg -si --noconfirm
+          become: true
+          become_user: "{{ target_user }}"
+          register: makepkg_result
+          changed_when: makepkg_result.rc == 0
+
+        - name: Clean up build directory
+          ansible.builtin.file:
+            path: "{{ aur_build_dir.path }}"
+            state: absent
+          when: aur_build_dir.path is defined
+
+    - name: Verify AUR helper installation
+      ansible.builtin.command: "{{ aur_helper | default('paru') }} --version"
+      register: aur_helper_version
+      changed_when: false
+      failed_when: aur_helper_version.rc != 0
+
+    - name: Display AUR helper version
+      ansible.builtin.debug:
+        msg: "AUR helper installed: {{ aur_helper_version.stdout_lines[0] | default('Unknown version') }}"
+
+# =============================================================================
+# HELPER TASK: Install AUR packages
+# =============================================================================
+# Use this task file as an include to install AUR packages after the helper
+# is set up. This uses the kewlfft.aur collection.
+#
+# Example usage in another task file:
+#   - name: Install AUR packages
+#     kewlfft.aur.aur:
+#       name: "{{ item }}"
+#       state: present
+#       use: "{{ aur_helper | default('paru') }}"
+#     loop: "{{ my_aur_packages }}"
+#     become: true
+#     become_user: "{{ target_user }}"
+# =============================================================================

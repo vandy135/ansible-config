@@ -1,0 +1,83 @@
+---
+# =============================================================================
+# BASE ROLE - LOCALE AND TIMEZONE CONFIGURATION
+# =============================================================================
+# Configures system locale, timezone, and hostname.
+# Reference: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/lineinfile_module.html
+# Reference: https://wiki.archlinux.org/title/Locale
+# =============================================================================
+
+- name: Set system hostname
+  ansible.builtin.hostname:
+    name: "{{ system_hostname }}"
+  become: true
+  tags:
+    - locale
+    - hostname
+
+- name: Update /etc/hosts with hostname
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1'
+    line: "127.0.1.1\t{{ system_hostname }}.localdomain\t{{ system_hostname }}"
+    state: present
+    backup: true
+  become: true
+  tags:
+    - locale
+    - hostname
+
+- name: Set timezone
+  ansible.builtin.timezone:
+    name: "{{ system_timezone }}"
+  become: true
+  notify: Sync hardware clock
+  tags:
+    - locale
+    - timezone
+
+- name: Ensure locale is generated
+  ansible.builtin.lineinfile:
+    path: /etc/locale.gen
+    regexp: '^#?{{ system_locale }}'
+    line: "{{ system_locale }} UTF-8"
+    state: present
+  become: true
+  register: locale_gen_file
+  tags:
+    - locale
+
+- name: Generate locales
+  ansible.builtin.command: locale-gen
+  become: true
+  when: locale_gen_file.changed
+  register: locale_gen_result
+  changed_when: "'Generation complete' in locale_gen_result.stdout | default('')"
+  tags:
+    - locale
+
+- name: Set system locale
+  ansible.builtin.copy:
+    content: |
+      LANG={{ system_locale }}
+      LC_ALL={{ system_locale }}
+    dest: /etc/locale.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  tags:
+    - locale
+
+- name: Set console keymap
+  ansible.builtin.copy:
+    content: |
+      KEYMAP={{ system_keymap }}
+    dest: /etc/vconsole.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  tags:
+    - locale
+    - keymap

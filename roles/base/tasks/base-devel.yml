@@ -1,0 +1,42 @@
+---
+# =============================================================================
+# BASE ROLE - BASE DEVELOPMENT PACKAGES
+# =============================================================================
+# Installs essential development packages required for building AUR packages.
+# Reference: https://docs.ansible.com/ansible/latest/collections/community/general/pacman_module.html
+# Reference: https://wiki.archlinux.org/title/Arch_User_Repository#Prerequisites
+# =============================================================================
+
+- name: Install base-devel package group
+  community.general.pacman:
+    name: base-devel
+    state: present
+  become: true
+  tags:
+    - base-devel
+    - packages
+
+- name: Install additional base development packages
+  community.general.pacman:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ base_devel_packages | reject('equalto', 'base-devel') | list }}"
+  become: true
+  tags:
+    - base-devel
+    - packages
+
+- name: Verify essential tools are available
+  ansible.builtin.command: "which {{ item }}"
+  loop:
+    - gcc
+    - make
+    - git
+    - patch
+    - fakeroot
+  register: essential_tools_check
+  changed_when: false
+  failed_when: essential_tools_check.rc != 0
+  tags:
+    - base-devel
+    - verify

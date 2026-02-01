@@ -1,0 +1,121 @@
+---
+# =============================================================================
+# DOTFILES MANAGEMENT TASKS
+# =============================================================================
+# Manages dotfiles deployment through git repo cloning or template deployment.
+#
+# Reference: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/git_module.html
+# Reference: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/template_module.html
+# =============================================================================
+
+- name: Dotfiles Management
+  when: manage_dotfiles | default(true)
+  tags:
+    - dotfiles
+  block:
+    # -------------------------------------------------------------------------
+    # BACKUP EXISTING DOTFILES
+    # -------------------------------------------------------------------------
+    - name: Create backup directory
+      ansible.builtin.file:
+        path: "{{ backup_directory }}"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      become: true
+      when: backup_enabled | default(true)
+
+    - name: Backup existing config files
+      ansible.builtin.copy:
+        src: "{{ item.dest }}"
+        dest: "{{ backup_directory }}/{{ item.dest | basename }}.{{ ansible_date_time.epoch }}"
+        remote_src: true
+        mode: preserve
+      become: true
+      become_user: "{{ target_user }}"
+      loop: "{{ managed_dotfiles | default([]) }}"
+      when:
+        - backup_enabled | default(true)
+        - managed_dotfiles is defined
+        - managed_dotfiles | length > 0
+      failed_when: false  # Files may not exist yet
+
+    # -------------------------------------------------------------------------
+    # CLONE DOTFILES REPOSITORY
+    # -------------------------------------------------------------------------
+    - name: Clone dotfiles repository
+      ansible.builtin.git:
+        repo: "{{ dotfiles_repo }}"
+        dest: "{{ dotfiles_destination }}"
+        version: "{{ dotfiles_branch | default('main') }}"
+        force: "{{ dotfiles_force | default(false) }}"
+      become: true
+      become_user: "{{ target_user }}"
+      when:
+        - dotfiles_repo is defined
+        - dotfiles_repo | length > 0
+
+    - name: Run dotfiles install script if exists
+      ansible.builtin.command:
+        chdir: "{{ dotfiles_destination }}"
+        cmd: "{{ item }}"
+      become: true
+      become_user: "{{ target_user }}"
+      loop:
+        - "./install.sh"
+        - "./bootstrap.sh"
+        - "./setup.sh"
+      when:
+        - dotfiles_repo is defined
+        - dotfiles_repo | length > 0
+      failed_when: false
+      changed_when: false
+
+    # -------------------------------------------------------------------------
+    # DEPLOY MANAGED DOTFILES (FROM TEMPLATES)
+    # -------------------------------------------------------------------------
+    - name: Ensure parent directories exist for managed dotfiles
+      ansible.builtin.file:
+        path: "{{ item.dest | dirname }}"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      become: true
+      loop: "{{ managed_dotfiles | default([]) }}"
+      when:
+        - managed_dotfiles is defined
+        - managed_dotfiles | length > 0
+
+    - name: Deploy managed dotfiles from templates
+      ansible.builtin.template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: "{{ item.mode | default('0644') }}"
+        backup: true
+      become: true
+      loop: "{{ managed_dotfiles | default([]) }}"
+      when:
+        - managed_dotfiles is defined
+        - managed_dotfiles | length > 0
+
+    # -------------------------------------------------------------------------
+    # SYMLINK METHOD (Alternative to copy)
+    # -------------------------------------------------------------------------
+    - name: Create symlinks for dotfiles
+      ansible.builtin.file:
+        src: "{{ dotfiles_destination }}/{{ item.src }}"
+        dest: "{{ item.dest }}"
+        state: link
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        force: true
+      become: true
+      loop: "{{ dotfiles_symlinks | default([]) }}"
+      when:
+        - dotfiles_method | default('symlink') == 'symlink'
+        - dotfiles_symlinks is defined
+        - dotfiles_symlinks | length > 0

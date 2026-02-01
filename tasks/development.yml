@@ -1,0 +1,188 @@
+---
+# =============================================================================
+# DEVELOPMENT TOOLS TASKS
+# =============================================================================
+# Installs and configures development tools: git, neovim, docker, lazygit, gh, tmux
+#
+# Reference: https://wiki.archlinux.org/title/Docker
+# Reference: https://wiki.archlinux.org/title/Neovim
+# =============================================================================
+
+- name: Development Tools Setup
+  when: install_dev_tools | default(true)
+  tags:
+    - dev-tools
+  block:
+    # -------------------------------------------------------------------------
+    # GIT
+    # -------------------------------------------------------------------------
+    - name: Install git
+      community.general.pacman:
+        name: "{{ git_packages }}"
+        state: present
+      become: true
+      when: install_git | default(true)
+      tags:
+        - git
+
+    - name: Configure git for target user
+      community.general.git_config:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        scope: global
+      loop:
+        - { name: "init.defaultBranch", value: "main" }
+        - { name: "core.editor", value: "nvim" }
+        - { name: "core.pager", value: "delta" }
+        - { name: "interactive.diffFilter", value: "delta --color-only" }
+        - { name: "delta.navigate", value: "true" }
+        - { name: "delta.light", value: "false" }
+        - { name: "merge.conflictStyle", value: "diff3" }
+        - { name: "diff.colorMoved", value: "default" }
+      become: true
+      become_user: "{{ target_user }}"
+      when: install_git | default(true)
+      tags:
+        - git
+        - git-config
+
+    # -------------------------------------------------------------------------
+    # NEOVIM
+    # -------------------------------------------------------------------------
+    - name: Install neovim
+      community.general.pacman:
+        name: "{{ neovim_packages }}"
+        state: present
+      become: true
+      when: install_neovim | default(true)
+      tags:
+        - neovim
+
+    - name: Create neovim config directory
+      ansible.builtin.file:
+        path: "{{ target_user_home }}/.config/nvim"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      become: true
+      when: install_neovim | default(true)
+      tags:
+        - neovim
+
+    - name: Set nvim as default editor in environment
+      ansible.builtin.lineinfile:
+        path: /etc/environment
+        regexp: '^EDITOR='
+        line: 'EDITOR=nvim'
+        create: true
+        mode: '0644'
+      become: true
+      when: install_neovim | default(true)
+      tags:
+        - neovim
+
+    # -------------------------------------------------------------------------
+    # DOCKER
+    # -------------------------------------------------------------------------
+    - name: Install docker
+      community.general.pacman:
+        name: "{{ docker_packages }}"
+        state: present
+      become: true
+      when: install_docker | default(true)
+      notify: Enable docker
+      tags:
+        - docker
+
+    - name: Add target user to docker group
+      ansible.builtin.user:
+        name: "{{ target_user }}"
+        groups: docker
+        append: true
+      become: true
+      when: install_docker | default(true)
+      tags:
+        - docker
+
+    - name: Create docker config directory
+      ansible.builtin.file:
+        path: /etc/docker
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      become: true
+      when: install_docker | default(true)
+      tags:
+        - docker
+
+    - name: Configure docker daemon
+      ansible.builtin.copy:
+        content: |
+          {
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "10m",
+              "max-file": "3"
+            },
+            "storage-driver": "overlay2"
+          }
+        dest: /etc/docker/daemon.json
+        owner: root
+        group: root
+        mode: '0644'
+      become: true
+      when: install_docker | default(true)
+      notify: Enable docker
+      tags:
+        - docker
+
+    # -------------------------------------------------------------------------
+    # LAZYGIT
+    # -------------------------------------------------------------------------
+    - name: Install lazygit
+      community.general.pacman:
+        name: "{{ lazygit_packages }}"
+        state: present
+      become: true
+      when: install_lazygit | default(true)
+      tags:
+        - lazygit
+
+    # -------------------------------------------------------------------------
+    # GITHUB CLI
+    # -------------------------------------------------------------------------
+    - name: Install GitHub CLI
+      community.general.pacman:
+        name: "{{ github_cli_packages }}"
+        state: present
+      become: true
+      when: install_github_cli | default(true)
+      tags:
+        - github-cli
+        - gh
+
+    # -------------------------------------------------------------------------
+    # TMUX
+    # -------------------------------------------------------------------------
+    - name: Install tmux
+      community.general.pacman:
+        name: "{{ tmux_packages }}"
+        state: present
+      become: true
+      when: install_tmux | default(true)
+      tags:
+        - tmux
+
+    - name: Create tmux config directory
+      ansible.builtin.file:
+        path: "{{ target_user_home }}/.config/tmux"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      become: true
+      when: install_tmux | default(true)
+      tags:
+        - tmux

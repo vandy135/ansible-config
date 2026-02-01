@@ -1,0 +1,18 @@
+---
+# =============================================================================
+# BASE ROLE - HANDLERS
+# =============================================================================
+# Handlers are triggered by notify and run at the end of the play.
+# Reference: https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_handlers.html
+# =============================================================================
+
+- name: Update pacman database
+  community.general.pacman:
+    update_cache: true
+  become: true
+  listen: Update pacman database
+
+- name: Sync hardware clock
+  ansible.builtin.command: hwclock --systohc
+  become: true
+  listen: Sync hardware clock

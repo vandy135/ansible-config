@@ -1,0 +1,340 @@
+---
+# =============================================================================
+# ARCH LINUX ANSIBLE PLAYBOOK - MASTER CONFIGURATION
+# =============================================================================
+# This file contains all default configuration values and feature flags.
+# Override any of these values in host_vars/<hostname>.yml for host-specific config.
+#
+# Reference: https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# SYSTEM CONFIGURATION
+# -----------------------------------------------------------------------------
+
+# Target user configuration
+# The primary non-root user to configure
+target_user: "{{ ansible_user_id | default('titan') }}"
+target_user_home: "/home/{{ target_user }}"
+target_user_shell: /bin/zsh
+target_user_groups:
+  - wheel
+  - video
+  - audio
+  - input
+  - storage
+  - optical
+
+# Hostname (can be overridden per host)
+system_hostname: archlinux
+
+# Timezone configuration
+# Reference: timedatectl list-timezones
+system_timezone: America/Chicago
+
+# Locale configuration
+system_locale: en_US.UTF-8
+system_keymap: us
+
+# -----------------------------------------------------------------------------
+# FEATURE FLAGS - Enable/Disable Components
+# -----------------------------------------------------------------------------
+# Set these to true/false to enable/disable installation of each component.
+# Each flag controls a specific task or group of related tasks.
+
+# Base System Features
+install_base_devel: true          # Base development tools (gcc, make, etc.)
+configure_pacman: true            # Pacman configuration (parallel downloads, colors)
+install_aur_helper: true          # AUR helper (yay or paru)
+configure_sudo: true              # Sudo configuration for wheel group
+
+# Desktop Environment
+install_desktop: true             # Master toggle for all desktop components
+install_niri: true                # Niri Wayland compositor
+install_waybar: true              # Waybar status bar
+install_terminal: true            # Terminal emulator (alacritty)
+install_launcher: true            # Application launcher (fuzzel)
+install_notifications: true       # Notification daemon (mako)
+install_screen_locker: true       # Screen locker (swaylock + swayidle)
+install_wallpaper: true           # Wallpaper management (swaybg)
+install_display_manager: true     # Display manager (sddm)
+install_xdg_portal: true          # XDG desktop portal for Wayland
+
+# Development Tools
+install_dev_tools: true           # Master toggle for all dev tools
+install_git: true                 # Git version control
+install_neovim: true              # Neovim editor
+install_docker: true              # Docker containerization
+install_lazygit: true             # Lazygit TUI
+install_github_cli: true          # GitHub CLI (gh)
+install_tmux: true                # Terminal multiplexer
+
+# CLI Utilities
+install_cli_tools: true           # Master toggle for CLI utilities
+install_modern_unix: true         # Modern unix replacements (eza, fd, ripgrep, etc.)
+install_shell_utils: true         # Shell utilities (fzf, tldr, jq)
+install_http_tools: true          # HTTP tools (curl, httpie)
+install_clipboard: true           # Clipboard tools (wl-clipboard)
+
+# System Services
+install_audio: true               # Audio stack (pipewire)
+install_bluetooth: true           # Bluetooth support
+install_networking: true          # NetworkManager
+install_printing: false           # CUPS printing (disabled by default)
+
+# Security
+configure_firewall: true          # Firewall (ufw)
+configure_fail2ban: false         # Fail2ban (disabled by default - more for servers)
+
+# Shell
+install_zsh: true                 # Zsh shell with plugins
+
+# Additional Features
+install_fonts: true               # Font packages
+install_browser: true             # Web browser (zen-browser from AUR)
+install_keyring: true             # Gnome keyring for credential storage
+manage_dotfiles: true             # Dotfiles deployment
+install_extra_packages: true      # Extra custom packages per host
+install_ai_tools: true            # AI coding assistants and tools
+
+# -----------------------------------------------------------------------------
+# PACKAGE SELECTIONS
+# -----------------------------------------------------------------------------
+# Package names for each component. Modify these to change which packages
+# are installed for each feature.
+
+# AUR Helper selection: 'yay' or 'paru'
+aur_helper: paru
+aur_helper_package: paru-bin      # Use -bin for pre-compiled binary
+
+# Pacman configuration
+pacman_parallel_downloads: 5
+pacman_color: true
+pacman_verbose_pkg_lists: true
+pacman_check_space: true
+
+# Base development packages
+base_devel_packages:
+  - base-devel
+  - git
+  - wget
+  - rsync
+
+# Desktop environment packages
+niri_packages:
+  - niri
+
+waybar_packages:
+  - waybar
+  - otf-font-awesome           # Icons for waybar
+
+terminal_packages:
+  - alacritty
+
+launcher_packages:
+  - fuzzel
+
+notification_packages:
+  - mako
+  - libnotify                  # notify-send command
+
+screen_locker_packages:
+  - swaylock
+  - swayidle
+
+wallpaper_packages:
+  - swaybg
+
+display_manager_packages:
+  - sddm
+
+xdg_portal_packages:
+  - xdg-desktop-portal
+  - xdg-desktop-portal-gnome
+  - xdg-desktop-portal-gtk
+
+wayland_packages:
+  - wayland
+  - xorg-xwayland
+  - qt5-wayland
+  - qt6-wayland
+
+# Development tool packages
+git_packages:
+  - git
+  - git-delta                  # Better git diffs
+
+neovim_packages:
+  - neovim
+  - python-pynvim              # Python support for neovim
+  - xclip                      # Clipboard support (X11 fallback)
+
+docker_packages:
+  - docker
+  - docker-compose
+  - docker-buildx
+
+lazygit_packages:
+  - lazygit
+
+github_cli_packages:
+  - github-cli
+
+tmux_packages:
+  - tmux
+
+# CLI utility packages
+modern_unix_packages:
+  - eza                        # Modern ls replacement
+  - fd                         # Modern find replacement
+  - ripgrep                    # Modern grep replacement (rg)
+  - bat                        # Modern cat with syntax highlighting
+  - dust                       # Modern du replacement
+  - duf                        # Modern df replacement
+  - procs                      # Modern ps replacement
+  - sd                         # Modern sed replacement
+  - choose                     # Modern cut replacement
+  - hyperfine                  # Benchmarking tool
+  - tokei                      # Code statistics
+
+shell_utils_packages:
+  - fzf                        # Fuzzy finder
+  - tldr                       # Simplified man pages
+  - jq                         # JSON processor
+  - yq                         # YAML processor
+  - zoxide                     # Smarter cd command
+  - atuin                      # Shell history sync
+
+http_tools_packages:
+  - curl
+  - httpie
+  - wget
+
+clipboard_packages:
+  - wl-clipboard               # Wayland clipboard
+
+# Audio packages (Pipewire stack)
+audio_packages:
+  - pipewire
+  - pipewire-alsa
+  - pipewire-audio
+  - pipewire-jack
+  - pipewire-pulse
+  - wireplumber
+  - pavucontrol                # PulseAudio volume control GUI
+  - pamixer                    # CLI volume control
+
+# Bluetooth packages
+bluetooth_packages:
+  - bluez
+  - bluez-utils
+  - blueman                    # Bluetooth manager GUI
+
+# Networking packages
+networking_packages:
+  - networkmanager
+  - network-manager-applet
+  - nm-connection-editor
+  - iwd                        # Intel wireless daemon
+
+# Printing packages (CUPS)
+printing_packages:
+  - cups
+  - cups-pdf
+  - system-config-printer
+
+# Firewall packages
+firewall_packages:
+  - ufw
+
+# Font packages
+font_packages:
+  - ttf-jetbrains-mono-nerd    # JetBrains Mono Nerd Font
+  - ttf-firacode-nerd          # Fira Code Nerd Font
+  - noto-fonts                 # Google Noto fonts
+  - noto-fonts-emoji           # Emoji support
+  - ttf-liberation             # Liberation fonts (MS font alternatives)
+  - ttf-dejavu                 # DejaVu fonts
+
+# Browser packages (AUR)
+browser_aur_packages:
+  - zen-browser-bin
+
+# Keyring packages
+keyring_packages:
+  - gnome-keyring
+  - libsecret
+  - seahorse                   # GUI for keyring management
+
+# Zsh packages
+zsh_packages:
+  - zsh                        # Z shell
+  - zsh-completions            # Additional completions
+  - zsh-autosuggestions        # Fish-like autosuggestions
+  - zsh-syntax-highlighting    # Syntax highlighting
+
+zsh_aur_packages:
+  - fzf-tab-git                # FZF-powered tab completion
+
+# AI Tools and Applications
+ai_tools_packages:
+  - dbeaver                    # Universal database tool
+
+ai_tools_aur_packages:
+  - claude-code-bin            # Anthropic Claude CLI
+  - gemini-cli                 # Google Gemini CLI
+  - vesktop-bin                # Vencord Discord client (vesktop is the maintained version)
+
+# Extra packages - empty by default, override in host_vars
+extra_packages: []
+extra_aur_packages: []
+
+# -----------------------------------------------------------------------------
+# SERVICE CONFIGURATION
+# -----------------------------------------------------------------------------
+# Services to enable after installation
+
+services_to_enable:
+  - NetworkManager
+  - bluetooth
+  - docker
+  - sddm
+
+services_to_disable: []
+
+# -----------------------------------------------------------------------------
+# DOTFILES CONFIGURATION
+# -----------------------------------------------------------------------------
+# Configuration for dotfiles management
+
+dotfiles_repo: ""              # Git repo URL for dotfiles (e.g., https://github.com/user/dotfiles)
+dotfiles_destination: "{{ target_user_home }}/.dotfiles"
+dotfiles_method: symlink       # 'symlink' or 'copy'
+
+# Manual dotfiles - files to deploy from this playbook's templates
+# Format: { src: template_name, dest: destination_path }
+managed_dotfiles: []
+
+# -----------------------------------------------------------------------------
+# BACKUP CONFIGURATION
+# -----------------------------------------------------------------------------
+# Settings for backing up existing configurations before changes
+
+backup_enabled: true
+backup_directory: "{{ target_user_home }}/.config-backups/ansible-{{ ansible_date_time.date }}"
+
+# -----------------------------------------------------------------------------
+# SECURITY CONFIGURATION
+# -----------------------------------------------------------------------------
+
+# Firewall rules
+firewall_default_incoming: deny
+firewall_default_outgoing: allow
+firewall_rules:
+  - { rule: allow, port: 22, proto: tcp, comment: "SSH" }
+
+# SSH hardening (if managing SSH)
+configure_ssh: false
+ssh_port: 22
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"

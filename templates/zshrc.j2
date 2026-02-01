@@ -1,0 +1,182 @@
+# =============================================================================
+# ZSH CONFIGURATION
+# =============================================================================
+# Managed by Ansible - customize below the USER CUSTOMIZATION section
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# HISTORY CONFIGURATION
+# -----------------------------------------------------------------------------
+HISTSIZE=50000
+SAVEHIST=50000
+HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
+
+setopt EXTENDED_HISTORY          # Write the history file in the ':start:elapsed;command' format
+setopt HIST_EXPIRE_DUPS_FIRST    # Expire a duplicate event first when trimming history
+setopt HIST_FIND_NO_DUPS         # Do not display a previously found event
+setopt HIST_IGNORE_ALL_DUPS      # Delete an old recorded event if a new event is a duplicate
+setopt HIST_IGNORE_DUPS          # Do not record an event that was just recorded again
+setopt HIST_IGNORE_SPACE         # Do not record an event starting with a space
+setopt HIST_SAVE_NO_DUPS         # Do not write a duplicate event to the history file
+setopt SHARE_HISTORY             # Share history between all sessions
+
+# -----------------------------------------------------------------------------
+# GENERAL OPTIONS
+# -----------------------------------------------------------------------------
+setopt AUTO_CD                   # cd by typing directory name
+setopt AUTO_PUSHD                # Push directories onto stack
+setopt PUSHD_IGNORE_DUPS         # Don't push duplicates
+setopt PUSHD_SILENT              # Don't print directory stack
+setopt CORRECT                   # Command correction
+setopt INTERACTIVE_COMMENTS      # Allow comments in interactive shell
+setopt NO_BEEP                   # No beeping
+
+# -----------------------------------------------------------------------------
+# COMPLETION SYSTEM
+# -----------------------------------------------------------------------------
+autoload -Uz compinit
+compinit -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump-$ZSH_VERSION"
+
+# Create cache directory if it doesn't exist
+[[ -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh" ]] || mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}/zsh"
+
+# Completion styling
+zstyle ':completion:*' menu select                       # Menu selection
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' # Case insensitive
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"  # Colored completion
+zstyle ':completion:*' group-name ''                     # Group completions
+zstyle ':completion:*:descriptions' format '%F{yellow}-- %d --%f'
+zstyle ':completion:*:warnings' format '%F{red}-- no matches --%f'
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompcache"
+
+# -----------------------------------------------------------------------------
+# KEY BINDINGS
+# -----------------------------------------------------------------------------
+bindkey -e                       # Emacs key bindings (use -v for vim)
+
+# History search with up/down arrows
+bindkey '^[[A' history-search-backward
+bindkey '^[[B' history-search-forward
+
+# Home/End keys
+bindkey '^[[H' beginning-of-line
+bindkey '^[[F' end-of-line
+
+# Delete key
+bindkey '^[[3~' delete-char
+
+# Ctrl+Left/Right for word navigation
+bindkey '^[[1;5C' forward-word
+bindkey '^[[1;5D' backward-word
+
+# -----------------------------------------------------------------------------
+# PLUGINS
+# -----------------------------------------------------------------------------
+
+# Zsh Autosuggestions - Fish-like suggestions
+if [[ -f /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]]; then
+    source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+    ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+    ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20
+    bindkey '^[[Z' autosuggest-accept  # Shift+Tab to accept suggestion
+    bindkey '^ ' autosuggest-accept    # Ctrl+Space to accept suggestion
+fi
+
+# Zsh Syntax Highlighting - Must be loaded before fzf-tab
+if [[ -f /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]]; then
+    source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+fi
+
+# FZF Tab Completion (AUR: fzf-tab-git)
+if [[ -f /usr/share/zsh/plugins/fzf-tab-git/fzf-tab.plugin.zsh ]]; then
+    source /usr/share/zsh/plugins/fzf-tab-git/fzf-tab.plugin.zsh
+    # Preview directory contents
+    zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath 2>/dev/null || ls -1 --color=always $realpath'
+    zstyle ':fzf-tab:complete:*:*' fzf-preview 'bat --color=always --style=numbers --line-range=:500 $realpath 2>/dev/null || cat $realpath 2>/dev/null || eza -1 --color=always $realpath 2>/dev/null'
+fi
+
+# Additional completions
+if [[ -d /usr/share/zsh/site-functions ]]; then
+    fpath=(/usr/share/zsh/site-functions $fpath)
+fi
+
+# -----------------------------------------------------------------------------
+# FZF INTEGRATION
+# -----------------------------------------------------------------------------
+if command -v fzf &>/dev/null; then
+    # FZF default options
+    export FZF_DEFAULT_OPTS='
+        --height 40%
+        --layout=reverse
+        --border
+        --info=inline
+        --color=bg+:#313244,bg:#1e1e2e,spinner:#f5e0dc,hl:#f38ba8
+        --color=fg:#cdd6f4,header:#f38ba8,info:#cba6f7,pointer:#f5e0dc
+        --color=marker:#f5e0dc,fg+:#cdd6f4,prompt:#cba6f7,hl+:#f38ba8
+    '
+
+    # Use fd for FZF if available
+    if command -v fd &>/dev/null; then
+        export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+        export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+        export FZF_ALT_C_COMMAND='fd --type d --hidden --follow --exclude .git'
+    fi
+
+    # Load FZF keybindings
+    [[ -f /usr/share/fzf/key-bindings.zsh ]] && source /usr/share/fzf/key-bindings.zsh
+    [[ -f /usr/share/fzf/completion.zsh ]] && source /usr/share/fzf/completion.zsh
+fi
+
+# -----------------------------------------------------------------------------
+# ZOXIDE (Smart cd)
+# -----------------------------------------------------------------------------
+if command -v zoxide &>/dev/null; then
+    eval "$(zoxide init zsh)"
+fi
+
+# -----------------------------------------------------------------------------
+# ATUIN (Shell History)
+# -----------------------------------------------------------------------------
+if command -v atuin &>/dev/null; then
+    eval "$(atuin init zsh --disable-up-arrow)"
+fi
+
+# -----------------------------------------------------------------------------
+# PROMPT
+# -----------------------------------------------------------------------------
+# Simple but informative prompt - customize or replace with starship/powerlevel10k
+autoload -Uz vcs_info
+precmd() { vcs_info }
+zstyle ':vcs_info:git:*' formats '%F{magenta}(%b)%f '
+
+setopt PROMPT_SUBST
+PROMPT='%F{cyan}%~%f ${vcs_info_msg_0_}%F{green}❯%f '
+RPROMPT='%(?..%F{red}[%?]%f)'
+
+# -----------------------------------------------------------------------------
+# ALIASES
+# -----------------------------------------------------------------------------
+# Load shared aliases (created by cli-tools.yml)
+[[ -f "$HOME/.config/shell/aliases.sh" ]] && source "$HOME/.config/shell/aliases.sh"
+
+# Zsh-specific aliases
+alias -g H='| head'
+alias -g T='| tail'
+alias -g G='| grep'
+alias -g L='| less'
+alias -g NUL='> /dev/null 2>&1'
+
+# -----------------------------------------------------------------------------
+# PATH
+# -----------------------------------------------------------------------------
+# Add local bin to PATH if it exists
+[[ -d "$HOME/.local/bin" ]] && path=("$HOME/.local/bin" $path)
+
+# Deduplicate PATH
+typeset -U path
+
+# =============================================================================
+# USER CUSTOMIZATION - Add your customizations below this line
+# =============================================================================
+

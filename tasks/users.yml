@@ -1,0 +1,117 @@
+---
+# =============================================================================
+# USER MANAGEMENT TASKS
+# =============================================================================
+# Creates and configures user accounts, sudo access, and shell configuration.
+#
+# Reference: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/user_module.html
+# Reference: https://wiki.archlinux.org/title/Users_and_groups
+# =============================================================================
+
+- name: User Management
+  tags:
+    - users
+    - sudo
+  block:
+    # -------------------------------------------------------------------------
+    # USER CREATION
+    # -------------------------------------------------------------------------
+    - name: Ensure wheel group exists
+      ansible.builtin.group:
+        name: wheel
+        state: present
+      become: true
+
+    - name: Create target user
+      ansible.builtin.user:
+        name: "{{ target_user }}"
+        groups: "{{ target_user_groups | default(['wheel']) }}"
+        append: true
+        shell: "{{ target_user_shell | default('/bin/bash') }}"
+        create_home: true
+        home: "{{ target_user_home | default('/home/' + target_user) }}"
+        state: present
+      become: true
+      register: user_created
+
+    - name: Display user creation result
+      ansible.builtin.debug:
+        msg: "User '{{ target_user }}' {{ 'created' if user_created.changed else 'already exists' }}"
+
+    # -------------------------------------------------------------------------
+    # SUDO CONFIGURATION
+    # -------------------------------------------------------------------------
+    - name: Configure sudo for wheel group
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/wheel
+        line: "%wheel ALL=(ALL:ALL) ALL"
+        create: true
+        mode: '0440'
+        validate: 'visudo -cf %s'
+      become: true
+      when: configure_sudo | default(true)
+
+    - name: Configure passwordless sudo for wheel group (optional)
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/wheel-nopasswd
+        line: "%wheel ALL=(ALL:ALL) NOPASSWD: ALL"
+        create: true
+        mode: '0440'
+        validate: 'visudo -cf %s'
+      become: true
+      when:
+        - configure_sudo | default(true)
+        - sudo_passwordless | default(false)
+
+    # -------------------------------------------------------------------------
+    # SHELL CONFIGURATION
+    # -------------------------------------------------------------------------
+    - name: Install user's preferred shell
+      community.general.pacman:
+        name: "{{ target_user_shell | basename }}"
+        state: present
+      become: true
+      when: target_user_shell != '/bin/bash'
+      failed_when: false  # Shell might already be installed or named differently
+
+    - name: Ensure zsh is installed if user shell is zsh
+      community.general.pacman:
+        name: zsh
+        state: present
+      become: true
+      when: "'/zsh' in target_user_shell"
+
+    # -------------------------------------------------------------------------
+    # USER DIRECTORIES
+    # -------------------------------------------------------------------------
+    - name: Create standard XDG directories
+      ansible.builtin.file:
+        path: "{{ target_user_home }}/{{ item }}"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      loop:
+        - .config
+        - .local
+        - .local/bin
+        - .local/share
+        - .local/state
+        - .cache
+        - Documents
+        - Downloads
+        - Pictures
+        - Videos
+        - Music
+        - Projects
+      become: true
+
+    - name: Set correct ownership for user home directory
+      ansible.builtin.file:
+        path: "{{ target_user_home }}"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+        recurse: false
+      become: true

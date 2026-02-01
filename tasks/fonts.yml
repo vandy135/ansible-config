@@ -1,0 +1,26 @@
+---
+# =============================================================================
+# FONTS INSTALLATION TASKS
+# =============================================================================
+# Installs font packages for proper text rendering.
+#
+# Reference: https://wiki.archlinux.org/title/Fonts
+# =============================================================================
+
+- name: Fonts Installation
+  when: install_fonts | default(true)
+  tags:
+    - fonts
+  block:
+    - name: Install font packages
+      community.general.pacman:
+        name: "{{ font_packages }}"
+        state: present
+      become: true
+
+    - name: Update font cache
+      ansible.builtin.command: fc-cache -fv
+      become: true
+      changed_when: false
+      register: font_cache_result
+      failed_when: font_cache_result.rc != 0

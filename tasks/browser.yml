@@ -1,0 +1,29 @@
+---
+# =============================================================================
+# BROWSER INSTALLATION TASKS
+# =============================================================================
+# Installs web browser (Zen Browser from AUR).
+#
+# Note: Requires AUR helper to be installed first.
+# =============================================================================
+
+- name: Browser Installation
+  when: install_browser | default(true)
+  tags:
+    - browser
+  block:
+    - name: Check if AUR helper is available
+      ansible.builtin.command: "which {{ aur_helper | default('paru') }}"
+      register: aur_helper_available
+      changed_when: false
+      failed_when: false
+
+    - name: Install browser from AUR
+      kewlfft.aur.aur:
+        name: "{{ item }}"
+        state: present
+        use: "{{ aur_helper | default('paru') }}"
+      become: true
+      become_user: "{{ target_user }}"
+      loop: "{{ browser_aur_packages }}"
+      when: aur_helper_available.rc == 0

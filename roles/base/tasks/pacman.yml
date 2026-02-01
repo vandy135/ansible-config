@@ -1,0 +1,82 @@
+---
+# =============================================================================
+# BASE ROLE - PACMAN CONFIGURATION
+# =============================================================================
+# Configures pacman package manager for optimal operation.
+# Reference: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/template_module.html
+# Reference: https://wiki.archlinux.org/title/Pacman
+# =============================================================================
+
+- name: Backup existing pacman.conf
+  ansible.builtin.copy:
+    src: /etc/pacman.conf
+    dest: "{{ backup_directory | default('/root/.config-backup') }}/pacman.conf.{{ ansible_date_time.epoch }}"
+    remote_src: true
+    mode: '0644'
+  when: backup_enabled | default(true)
+  failed_when: false
+  tags:
+    - pacman
+    - backup
+
+- name: Configure pacman.conf from template
+  ansible.builtin.template:
+    src: pacman.conf.j2
+    dest: /etc/pacman.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+    validate: 'pacman-conf --config %s'
+  become: true
+  notify: Update pacman database
+  tags:
+    - pacman
+
+- name: Update pacman mirrorlist
+  ansible.builtin.template:
+    src: mirrorlist.j2
+    dest: /etc/pacman.d/mirrorlist
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  become: true
+  notify: Update pacman database
+  tags:
+    - pacman
+    - mirrors
+
+- name: Ensure pacman keyring is initialized
+  ansible.builtin.command: pacman-key --init
+  become: true
+  register: keyring_init
+  changed_when: "'generated' in keyring_init.stdout | default('')"
+  failed_when: keyring_init.rc != 0
+  tags:
+    - pacman
+
+- name: Populate pacman keyring
+  ansible.builtin.command: pacman-key --populate archlinux
+  become: true
+  register: keyring_populate
+  changed_when: "'imported' in keyring_populate.stdout | default('')"
+  failed_when: keyring_populate.rc != 0
+  tags:
+    - pacman
+
+- name: Update package database
+  community.general.pacman:
+    update_cache: true
+  become: true
+  tags:
+    - pacman
+
+- name: Perform full system upgrade
+  community.general.pacman:
+    upgrade: true
+  become: true
+  register: system_upgrade
+  tags:
+    - pacman
+    - upgrade

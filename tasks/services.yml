@@ -1,0 +1,213 @@
+---
+# =============================================================================
+# SYSTEM SERVICES TASKS
+# =============================================================================
+# Installs and configures essential system services:
+# - Audio (Pipewire)
+# - Bluetooth
+# - Networking (NetworkManager)
+# - Printing (CUPS)
+#
+# Reference: https://wiki.archlinux.org/title/PipeWire
+# Reference: https://wiki.archlinux.org/title/Bluetooth
+# Reference: https://wiki.archlinux.org/title/NetworkManager
+# =============================================================================
+
+- name: System Services Setup
+  tags:
+    - services
+  block:
+    # -------------------------------------------------------------------------
+    # AUDIO (PIPEWIRE)
+    # -------------------------------------------------------------------------
+    - name: Install audio packages (Pipewire)
+      community.general.pacman:
+        name: "{{ audio_packages }}"
+        state: present
+      become: true
+      when: install_audio | default(true)
+      tags:
+        - audio
+        - pipewire
+
+    - name: Ensure pipewire user directory exists
+      ansible.builtin.file:
+        path: "{{ target_user_home }}/.config/pipewire"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_user }}"
+        mode: '0755'
+      become: true
+      when: install_audio | default(true)
+      tags:
+        - audio
+        - pipewire
+
+    - name: Enable pipewire socket for user
+      ansible.builtin.systemd:
+        name: pipewire.socket
+        enabled: true
+        scope: user
+        state: started
+      become: true
+      become_user: "{{ target_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid | default(1000) }}"
+      when: install_audio | default(true)
+      failed_when: false  # May fail if not in graphical session
+      tags:
+        - audio
+        - pipewire
+
+    - name: Enable pipewire-pulse socket for user
+      ansible.builtin.systemd:
+        name: pipewire-pulse.socket
+        enabled: true
+        scope: user
+        state: started
+      become: true
+      become_user: "{{ target_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid | default(1000) }}"
+      when: install_audio | default(true)
+      failed_when: false
+      tags:
+        - audio
+        - pipewire
+
+    - name: Enable wireplumber service for user
+      ansible.builtin.systemd:
+        name: wireplumber
+        enabled: true
+        scope: user
+        state: started
+      become: true
+      become_user: "{{ target_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ ansible_user_uid | default(1000) }}"
+      when: install_audio | default(true)
+      failed_when: false
+      tags:
+        - audio
+        - wireplumber
+
+    # -------------------------------------------------------------------------
+    # BLUETOOTH
+    # -------------------------------------------------------------------------
+    - name: Install bluetooth packages
+      community.general.pacman:
+        name: "{{ bluetooth_packages }}"
+        state: present
+      become: true
+      when: install_bluetooth | default(true)
+      notify: Enable bluetooth
+      tags:
+        - bluetooth
+
+    - name: Enable bluetooth auto-power on
+      ansible.builtin.lineinfile:
+        path: /etc/bluetooth/main.conf
+        regexp: '^#?AutoEnable='
+        line: 'AutoEnable=true'
+        backup: true
+      become: true
+      when: install_bluetooth | default(true)
+      tags:
+        - bluetooth
+
+    - name: Enable bluetooth service
+      ansible.builtin.systemd:
+        name: bluetooth
+        enabled: true
+        state: started
+      become: true
+      when: install_bluetooth | default(true)
+      tags:
+        - bluetooth
+
+    # -------------------------------------------------------------------------
+    # NETWORKING (NETWORKMANAGER)
+    # -------------------------------------------------------------------------
+    - name: Install networking packages
+      community.general.pacman:
+        name: "{{ networking_packages }}"
+        state: present
+      become: true
+      when: install_networking | default(true)
+      notify: Enable NetworkManager
+      tags:
+        - networking
+
+    - name: Enable NetworkManager service
+      ansible.builtin.systemd:
+        name: NetworkManager
+        enabled: true
+        state: started
+      become: true
+      when: install_networking | default(true)
+      tags:
+        - networking
+
+    - name: Disable conflicting network services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: false
+        state: stopped
+      become: true
+      loop:
+        - systemd-networkd
+        - dhcpcd
+      when: install_networking | default(true)
+      failed_when: false  # Services may not exist
+      tags:
+        - networking
+
+    # -------------------------------------------------------------------------
+    # PRINTING (CUPS)
+    # -------------------------------------------------------------------------
+    - name: Install printing packages
+      community.general.pacman:
+        name: "{{ printing_packages }}"
+        state: present
+      become: true
+      when: install_printing | default(false)
+      notify: Enable cups
+      tags:
+        - printing
+        - cups
+
+    - name: Enable CUPS service
+      ansible.builtin.systemd:
+        name: cups
+        enabled: true
+        state: started
+      become: true
+      when: install_printing | default(false)
+      tags:
+        - printing
+        - cups
+
+    # -------------------------------------------------------------------------
+    # ENABLE CONFIGURED SERVICES
+    # -------------------------------------------------------------------------
+    - name: Enable additional configured services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      become: true
+      loop: "{{ services_to_enable | default([]) }}"
+      failed_when: false  # Some services may not be installed yet
+      tags:
+        - services
+
+    - name: Disable configured services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: false
+        state: stopped
+      become: true
+      loop: "{{ services_to_disable | default([]) }}"
+      failed_when: false
+      tags:
+        - services

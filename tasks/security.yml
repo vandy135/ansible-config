@@ -1,0 +1,162 @@
+---
+# =============================================================================
+# SECURITY TASKS
+# =============================================================================
+# Configures security features including firewall (UFW).
+#
+# Reference: https://wiki.archlinux.org/title/Uncomplicated_Firewall
+# Reference: https://docs.ansible.com/ansible/latest/collections/community/general/ufw_module.html
+# =============================================================================
+
+- name: Security Configuration
+  tags:
+    - security
+  block:
+    # -------------------------------------------------------------------------
+    # FIREWALL (UFW)
+    # -------------------------------------------------------------------------
+    - name: Install firewall packages
+      community.general.pacman:
+        name: "{{ firewall_packages }}"
+        state: present
+      become: true
+      when: configure_firewall | default(true)
+      tags:
+        - firewall
+        - ufw
+
+    - name: Reset UFW to default settings
+      community.general.ufw:
+        state: reset
+      become: true
+      when:
+        - configure_firewall | default(true)
+        - firewall_reset | default(false)
+      tags:
+        - firewall
+        - ufw
+
+    - name: Set UFW default incoming policy
+      community.general.ufw:
+        direction: incoming
+        policy: "{{ firewall_default_incoming | default('deny') }}"
+      become: true
+      when: configure_firewall | default(true)
+      tags:
+        - firewall
+        - ufw
+
+    - name: Set UFW default outgoing policy
+      community.general.ufw:
+        direction: outgoing
+        policy: "{{ firewall_default_outgoing | default('allow') }}"
+      become: true
+      when: configure_firewall | default(true)
+      tags:
+        - firewall
+        - ufw
+
+    - name: Configure UFW rules
+      community.general.ufw:
+        rule: "{{ item.rule | default('allow') }}"
+        port: "{{ item.port }}"
+        proto: "{{ item.proto | default('tcp') }}"
+        comment: "{{ item.comment | default('') }}"
+      become: true
+      loop: "{{ firewall_rules | default([]) }}"
+      when: configure_firewall | default(true)
+      tags:
+        - firewall
+        - ufw
+
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+      become: true
+      when: configure_firewall | default(true)
+      notify: Enable ufw
+      tags:
+        - firewall
+        - ufw
+
+    - name: Enable UFW logging
+      community.general.ufw:
+        logging: "on"
+      become: true
+      when: configure_firewall | default(true)
+      tags:
+        - firewall
+        - ufw
+
+    # -------------------------------------------------------------------------
+    # FAIL2BAN (Optional)
+    # -------------------------------------------------------------------------
+    - name: Install fail2ban
+      community.general.pacman:
+        name: fail2ban
+        state: present
+      become: true
+      when: configure_fail2ban | default(false)
+      tags:
+        - fail2ban
+
+    - name: Enable fail2ban service
+      ansible.builtin.systemd:
+        name: fail2ban
+        enabled: true
+        state: started
+      become: true
+      when: configure_fail2ban | default(false)
+      tags:
+        - fail2ban
+
+    # -------------------------------------------------------------------------
+    # SSH HARDENING (Optional)
+    # -------------------------------------------------------------------------
+    - name: Configure SSH server
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        backup: true
+        validate: 'sshd -t -f %s'
+      become: true
+      loop:
+        - { regexp: '^#?Port ', line: "Port {{ ssh_port | default(22) }}" }
+        - { regexp: '^#?PermitRootLogin ', line: "PermitRootLogin {{ ssh_permit_root_login | default('no') }}" }
+        - { regexp: '^#?PasswordAuthentication ', line: "PasswordAuthentication {{ ssh_password_authentication | default('no') }}" }
+        - { regexp: '^#?PubkeyAuthentication ', line: "PubkeyAuthentication yes" }
+        - { regexp: '^#?X11Forwarding ', line: "X11Forwarding no" }
+      when: configure_ssh | default(false)
+      notify: Restart sshd
+      tags:
+        - ssh
+
+    # -------------------------------------------------------------------------
+    # SECURITY PERMISSIONS
+    # -------------------------------------------------------------------------
+    - name: Set secure permissions on sensitive directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        mode: '0700'
+        state: directory
+      become: true
+      loop:
+        - /root
+        - "{{ target_user_home }}/.ssh"
+        - "{{ target_user_home }}/.gnupg"
+      failed_when: false  # Directories may not exist yet
+      tags:
+        - permissions
+
+# Handler for SSH restart (defined here since handlers/main.yml might not have it)
+- name: Restart sshd handler block
+  tags:
+    - never
+  block:
+    - name: Restart sshd
+      ansible.builtin.systemd:
+        name: sshd
+        state: restarted
+      become: true
+      listen: Restart sshd
