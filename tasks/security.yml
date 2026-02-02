@@ -149,14 +149,4 @@
       tags:
         - permissions
 
-# Handler for SSH restart (defined here since handlers/main.yml might not have it)
-- name: Restart sshd handler block
-  tags:
-    - never
-  block:
-    - name: Restart sshd
-      ansible.builtin.systemd:
-        name: sshd
-        state: restarted
-      become: true
-      listen: Restart sshd
+# Note: The "Restart sshd" handler is defined in the main playbook's handlers section

@@ -102,6 +102,7 @@
         append: true
       become: true
       when: install_docker | default(true)
+      failed_when: false  # May fail in check mode if docker not installed
       tags:
         - docker
 

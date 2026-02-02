@@ -18,10 +18,6 @@
   hosts: all
   gather_facts: true
 
-  # Load handlers for all tasks
-  handlers_files:
-    - handlers/main.yml
-
   # Pre-tasks run before roles and tasks
   pre_tasks:
     - name: Display playbook information
@@ -198,3 +194,90 @@
           ╚══════════════════════════════════════════════════════════════╝
       tags:
         - always
+
+  # Handlers - triggered by notify and run at end of play
+  handlers:
+    - name: Enable sddm service
+      ansible.builtin.systemd:
+        name: sddm
+        enabled: true
+        state: started
+      become: true
+      failed_when: false  # May fail in check mode if sddm not installed
+
+    - name: Enable pipewire
+      ansible.builtin.systemd:
+        name: pipewire
+        enabled: true
+        scope: user
+        state: started
+      become: true
+      become_user: "{{ target_user }}"
+
+    - name: Enable pipewire-pulse
+      ansible.builtin.systemd:
+        name: pipewire-pulse
+        enabled: true
+        scope: user
+        state: started
+      become: true
+      become_user: "{{ target_user }}"
+
+    - name: Enable wireplumber
+      ansible.builtin.systemd:
+        name: wireplumber
+        enabled: true
+        scope: user
+        state: started
+      become: true
+      become_user: "{{ target_user }}"
+
+    - name: Enable bluetooth
+      ansible.builtin.systemd:
+        name: bluetooth
+        enabled: true
+        state: started
+      become: true
+
+    - name: Enable NetworkManager
+      ansible.builtin.systemd:
+        name: NetworkManager
+        enabled: true
+        state: started
+      become: true
+
+    - name: Enable docker
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+      become: true
+      failed_when: false  # May fail in check mode if docker not installed
+
+    - name: Enable ufw
+      ansible.builtin.systemd:
+        name: ufw
+        enabled: true
+        state: started
+      become: true
+      failed_when: false  # May fail in check mode if ufw not installed
+
+    - name: Reload ufw
+      ansible.builtin.command: ufw reload
+      become: true
+      failed_when: false  # May fail in check mode if ufw not installed
+
+    - name: Enable cups
+      ansible.builtin.systemd:
+        name: cups
+        enabled: true
+        state: started
+      become: true
+      failed_when: false  # May fail in check mode if cups not installed
+
+    - name: Restart sshd
+      ansible.builtin.systemd:
+        name: sshd
+        state: restarted
+      become: true
+      failed_when: false  # May fail in check mode if sshd not installed
